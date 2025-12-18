@@ -4,7 +4,7 @@ pipeline {
     // Define environment variables
     environment {
         // Replace with your Docker Hub username and repo name
-        DOCKER_IMAGE_NAME = "yourusername/your-repo-name"
+        DOCKER_IMAGE_NAME = "puthu031991/devops_project"
         // Get Jenkins build number for unique tagging
         IMAGE_TAG = "build-${BUILD_NUMBER}"
         // Credential ID for Docker Hub login (defined in Jenkins UI)
