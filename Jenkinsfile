@@ -1,78 +1,55 @@
 pipeline {
     agent any
+
+    // Define environment variables
     environment {
-        //be sure to replace "willbla" with your own Docker Hub username
-        DOCKER_IMAGE_NAME = "willbla/train-schedule"
+        // Replace with your Docker Hub username and repo name
+        DOCKER_IMAGE_NAME = "yourusername/your-repo-name"
+        // Get Jenkins build number for unique tagging
+        IMAGE_TAG = "build-${BUILD_NUMBER}"
+        // Credential ID for Docker Hub login (defined in Jenkins UI)
+        DOCKERHUB_CREDENTIALS = 'docker-hub-credentials'
     }
+
     stages {
-        stage('Build') {
-            steps {
-                echo 'Running build automation'
-                sh './gradlew build --no-daemon'
-                archiveArtifacts artifacts: 'dist/trainSchedule.zip'
-            }
-        }
         stage('Build Docker Image') {
-            when {
-                branch 'master'
-            }
             steps {
                 script {
-                    app = docker.build(DOCKER_IMAGE_NAME)
-                    app.inside {
-                        sh 'echo Hello, World!'
+                    // Build the Docker image using the Dockerfile in the current directory
+                    // and tag it with the specific build number
+                    docker.build("${DOCKER_IMAGE_NAME}:${IMAGE_TAG}")
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    // Authenticate and push the image to Docker Hub
+                    // The 'withRegistry' block uses the stored credentials
+                    withCredentials([usernamePassword(credentialsId: DOCKERHUB_CREDENTIALS, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USER')]) {
+                        docker.withRegistry('https://registry.hub.docker.com', DOCKERHUB_CREDENTIALS) {
+                            def img = docker.image("${DOCKER_IMAGE_NAME}:${IMAGE_TAG}")
+                            img.push()
+                        }
                     }
                 }
             }
         }
-        stage('Push Docker Image') {
-            when {
-                branch 'master'
-            }
+
+        stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker_hub_login') {
-                        app.push("${env.BUILD_NUMBER}")
-                        app.push("latest")
-                    }
+                    // Dynamically replace the placeholder tag in the YAML file with the current build tag
+                    // and apply the configuration to the Kubernetes cluster
+                    sh "sed -i 's|BUILD_TAG_PLACEHOLDER|${IMAGE_TAG}|' k8s/deployment.yaml"
+                    
+                    // Apply the updated YAML using kubectl (assumes kubectl is installed and configured on the Jenkins agent)
+                    sh "kubectl apply -f k8s/deployment.yaml"
+
+                    // (Optional) Clean up the modified file to ensure repository integrity
+                    sh "git checkout k8s/deployment.yaml" 
                 }
-            }
-        }
-        stage('CanaryDeploy') {
-            when {
-                branch 'master'
-            }
-            environment { 
-                CANARY_REPLICAS = 1
-            }
-            steps {
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'train-schedule-kube-canary.yml',
-                    enableConfigSubstitution: true
-                )
-            }
-        }
-        stage('DeployToProduction') {
-            when {
-                branch 'master'
-            }
-            environment { 
-                CANARY_REPLICAS = 0
-            }
-            steps {
-                input 'Deploy to Production?'
-                milestone(1)
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'train-schedule-kube-canary.yml',
-                    enableConfigSubstitution: true
-                )
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'train-schedule-kube.yml',
-                    enableConfigSubstitution: true
-                )
             }
         }
     }
