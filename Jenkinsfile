@@ -42,13 +42,13 @@ pipeline {
                 script {
                     // Dynamically replace the placeholder tag in the YAML file with the current build tag
                     // and apply the configuration to the Kubernetes cluster
-                    sh "sed -i 's|BUILD_TAG_PLACEHOLDER|${IMAGE_TAG}|' k8s/deployment.yaml"
+                    sh "sed -i 's|BUILD_TAG_PLACEHOLDER|${IMAGE_TAG}|' train-schedule-kube.yml"
                     
                     // Apply the updated YAML using kubectl (assumes kubectl is installed and configured on the Jenkins agent)
-                    sh "kubectl apply -f k8s/deployment.yaml"
+                    sh "kubectl apply -f train-schedule-kube.yml"
 
                     // (Optional) Clean up the modified file to ensure repository integrity
-                    sh "git checkout k8s/deployment.yaml" 
+                    sh "git checkout train-schedule-kube.yml" 
                 }
             }
         }
