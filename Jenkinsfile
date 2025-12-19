@@ -43,7 +43,7 @@ pipeline {
                 withCredentials([file(credentialsId: KUBECONFIG_CRED_ID, variable: 'KUBECONFIG_PATH')]) {
                     sh '''
                     # Set the KUBECONFIG environment variable
-                    export KUBECONFIG="/usr/local/bin/kubectl"
+                    export KUBECONFIG=$KUBECONFIG_PATH
                     # Replace the placeholder in the YAML file with the actual image tag
                     sed -i "s|\\${IMAGE_TAG}|${BUILD_NUMBER}|" train-schedule-kube.yml
                     # Apply the deployment to the Kubernetes cluster using kubectl
