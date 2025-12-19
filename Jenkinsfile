@@ -41,7 +41,7 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
+               // script {
                     withCredentials([file(credentialsId: 'kubeconfig-embedded', variable: 'KUBECONFIG')]) {
           sh '''
             unset HTTP_PROXY HTTPS_PROXY
@@ -63,5 +63,5 @@ pipeline {
                 }
             }
         }
-    }
+   // }
 }
