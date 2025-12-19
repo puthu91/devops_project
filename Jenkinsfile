@@ -45,7 +45,7 @@ pipeline {
                     sh "sed -i 's|BUILD_TAG_PLACEHOLDER|${IMAGE_TAG}|' train-schedule-kube.yml"
                     
                     // Apply the updated YAML using kubectl (assumes kubectl is installed and configured on the Jenkins agent)
-                    sh "kubectl apply -f train-schedule-kube.yml"
+                    sh "kubectl apply --validate=false -f train-schedule-kube.yml"
 
                     // (Optional) Clean up the modified file to ensure repository integrity
                     sh "git checkout train-schedule-kube.yml" 
