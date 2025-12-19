@@ -9,8 +9,7 @@ pipeline {
         IMAGE_TAG = "build-${BUILD_NUMBER}"
         // Credential ID for Docker Hub login (defined in Jenkins UI)
         DOCKERHUB_CREDENTIALS = 'docker-hub-credentials'
-        NO_PROXY = '192.168.49.2,localhost,127.0.0.1,.cluster.local,.svc'
-        no_proxy = '192.168.49.2,localhost,127.0.0.1,.cluster.local,.svc'
+        KUBECONFIG_CRED_ID = "kubeconfig-embedded"
     }
 
     stages {
@@ -38,22 +37,23 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-        
-                    // Dynamically replace the placeholder tag in the YAML file with the current build tag
-                    // and apply the configuration to the Kubernetes cluster
-                    sh "sed -i 's|BUILD_TAG_PLACEHOLDER|${IMAGE_TAG}|' train-schedule-kube.yml"
-                    
-                    // Apply the updated YAML using kubectl (assumes kubectl is installed and configured on the Jenkins agent)
-                    sh "kubectl apply --validate=false -f train-schedule-kube.yml"
-
-                    // (Optional) Clean up the modified file to ensure repository integrity
-                    sh "git checkout train-schedule-kube.yml" 
+                // Use withCredentials to access the kubeconfig file securely
+                withCredentials([file(credentialsId: KUBECONFIG_CRED_ID, variable: 'KUBECONFIG_PATH')]) {
+                    sh '''
+                    # Set the KUBECONFIG environment variable
+                    export KUBECONFIG="/usr/local/bin/kubectl"
+                    # Replace the placeholder in the YAML file with the actual image tag
+                    sed -i "s|\\${IMAGE_TAG}|${BUILD_NUMBER}|" train-schedule-kube.yml
+                    # Apply the deployment to the Kubernetes cluster using kubectl
+                    kubectl apply -f train-schedule-kube.yml
+                    # Apply service file if needed
+                    # kubectl apply -f train-schedule-kube.yml
+                    '''
                 }
             }
         }
     }
 }
+       
